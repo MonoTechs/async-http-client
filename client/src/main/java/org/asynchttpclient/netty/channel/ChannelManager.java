@@ -23,6 +23,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.oio.OioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -39,6 +40,7 @@ import io.netty.util.Timer;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
+import io.netty.util.concurrent.GlobalEventExecutor;
 
 import java.io.IOException;
 import java.util.Map.Entry;
@@ -133,7 +135,7 @@ public class ChannelManager {
         maxConnectionsPerHostEnabled = config.getMaxConnectionsPerHost() > 0;
 
         if (maxTotalConnectionsEnabled || maxConnectionsPerHostEnabled) {
-            openChannels = new CleanupChannelGroup("asyncHttpClient") {
+            openChannels = new DefaultChannelGroup("asyncHttpClient", GlobalEventExecutor.INSTANCE) {
                 @Override
                 public boolean remove(Object o) {
                     boolean removed = super.remove(o);
@@ -154,7 +156,7 @@ public class ChannelManager {
             };
             freeChannels = new Semaphore(config.getMaxConnections());
         } else {
-            openChannels = new CleanupChannelGroup("asyncHttpClient");
+            openChannels = new DefaultChannelGroup("asyncHttpClient", GlobalEventExecutor.INSTANCE);
             freeChannels = null;
         }
 
@@ -387,7 +389,7 @@ public class ChannelManager {
         Channels.setDiscard(channel);
         removeAll(channel);
         Channels.silentlyCloseChannel(channel);
-        openChannels.remove(channel);
+//        openChannels.remove(channel);
     }
 
     public void abortChannelPreemption(Object partitionKey) {
