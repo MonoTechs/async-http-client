@@ -45,6 +45,7 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 import java.io.IOException;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -357,28 +358,32 @@ public class ChannelManager {
     }
 
     private void doClose() {
-        channelPool.destroy();
+//        channelPool.destroy();
         openChannels.close();
-
-        for (Channel channel : openChannels) {
-            Object attribute = Channels.getAttribute(channel);
-            if (attribute instanceof NettyResponseFuture<?>) {
-                NettyResponseFuture<?> nettyFuture = (NettyResponseFuture<?>) attribute;
-                nettyFuture.cancelTimeouts();
-            }
-        }
+//
+//        for (Channel channel : openChannels) {
+//            Object attribute = Channels.getAttribute(channel);
+//            if (attribute instanceof NettyResponseFuture<?>) {
+//                NettyResponseFuture<?> nettyFuture = (NettyResponseFuture<?>) attribute;
+//                nettyFuture.cancelTimeouts();
+//            }
+//        }
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public void close() {
         if (allowReleaseEventLoopGroup) {
-            eventLoopGroup.shutdownGracefully(config.getShutdownQuietPeriod(), config.getShutdownTimeout(), TimeUnit.MILLISECONDS)//
-                    .addListener(new FutureListener() {
-                        @Override
-                        public void operationComplete(Future future) throws Exception {
-                            doClose();
-                        }
-                    });
+            try {
+                eventLoopGroup.shutdownGracefully(config.getShutdownQuietPeriod(), config.getShutdownTimeout(), TimeUnit.MILLISECONDS)//
+                        .addListener(new FutureListener() {
+                            @Override
+                            public void operationComplete(Future future) throws Exception {
+                                doClose();
+                            }
+                        }).get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
         } else
             doClose();
     }
